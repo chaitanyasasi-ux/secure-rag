@@ -42,14 +42,16 @@ Admin   (level 3) → sees all documents
 Manager (level 2) → sees employee + manager documents
 Employee (level 1) → sees employee documents only
 ## Project Structure
+
+```
 secure-rag/
 ├── app/
-│   ├── api/v1/endpoints/   # route handlers
-│   ├── core/               # JWT, RBAC, config, rate limiting
-│   ├── db/                 # async database session
-│   ├── models/             # SQLModel table definitions
-│   ├── schemas/            # Pydantic request/response schemas
-│   └── services/           # business logic
+│   ├── api/v1/endpoints/    # route handlers
+│   ├── core/                # JWT, RBAC, config, rate limiting
+│   ├── db/                  # async database session
+│   ├── models/              # SQLModel table definitions
+│   ├── schemas/             # Pydantic request/response schemas
+│   └── services/            # business logic
 │       ├── auth_service.py
 │       ├── audit_service.py
 │       ├── embedding_service.py
@@ -64,6 +66,7 @@ secure-rag/
 ├── static/
 │   └── index.html
 └── tests/
+```
 ## Running locally
 
 ### Prerequisites
