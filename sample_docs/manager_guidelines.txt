@@ -1,0 +1,31 @@
+MANAGER GUIDELINES - CONFIDENTIAL
+
+TEAM PERFORMANCE MANAGEMENT
+Managers are responsible for conducting bi-annual performance reviews for all direct reports.
+Underperforming employees should be placed on a Performance Improvement Plan after two consecutive poor reviews.
+A Performance Improvement Plan must be documented and approved by HR before implementation.
+Managers have the authority to recommend salary increases of up to 10 percent for high performers.
+
+HIRING AND RECRUITMENT
+Managers can initiate a hiring request through the HR portal with budget approval from Finance.
+Interview panels must include at least one HR representative and one senior team member.
+All hiring decisions must be documented with clear justification to ensure compliance.
+Salary offers must fall within the approved band for the role as defined by HR and Finance.
+
+BUDGET MANAGEMENT
+Each department has a quarterly budget allocated at the start of the financial year.
+Managers can approve expenses up to 5000 dollars without additional sign-off.
+Expenses above 5000 dollars require approval from the department head and Finance.
+Budget reports are reviewed monthly and managers must explain variances above 15 percent.
+
+TEAM SALARY INFORMATION
+The salary band for junior engineers is 60000 to 80000 dollars per year.
+The salary band for senior engineers is 90000 to 120000 dollars per year.
+The salary band for team leads is 120000 to 150000 dollars per year.
+Annual bonuses range from 5 to 20 percent of base salary depending on performance rating.
+
+DISCIPLINARY PROCEDURES
+Verbal warnings must be documented in writing within 24 hours.
+Written warnings require HR sign-off before being issued.
+Termination decisions require approval from HR and the department head.
+All disciplinary actions must be recorded in the employee HR file.

@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Secure Enterprise RAG</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f1117;
+      color: #e1e4e8;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header h1 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #58a6ff;
+    }
+
+    .header h1 span {
+      color: #3fb950;
+      font-size: 12px;
+      background: #0d1117;
+      border: 1px solid #3fb950;
+      border-radius: 12px;
+      padding: 2px 8px;
+      margin-left: 10px;
+      vertical-align: middle;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+      color: #8b949e;
+    }
+
+    .role-badge {
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .role-employee { background: #1f4b2b; color: #3fb950; border: 1px solid #3fb950; }
+    .role-manager  { background: #1f3b6b; color: #58a6ff; border: 1px solid #58a6ff; }
+    .role-admin    { background: #4b1f1f; color: #f85149; border: 1px solid #f85149; }
+
+    /* ── Login ── */
+    #login-screen {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .login-card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 40px;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .login-card h2 {
+      font-size: 20px;
+      margin-bottom: 8px;
+      color: #f0f6fc;
+    }
+
+    .login-card p {
+      font-size: 13px;
+      color: #8b949e;
+      margin-bottom: 24px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      color: #8b949e;
+      margin-bottom: 6px;
+    }
+
+    .form-group input {
+      width: 100%;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 10px 14px;
+      color: #e1e4e8;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-group input:focus {
+      border-color: #58a6ff;
+    }
+
+    .btn-primary {
+      width: 100%;
+      background: #238636;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 8px;
+    }
+
+    .btn-primary:hover { background: #2ea043; }
+    .btn-primary:disabled { background: #21262d; color: #484f58; cursor: not-allowed; }
+
+    .error-msg {
+      color: #f85149;
+      font-size: 13px;
+      margin-top: 12px;
+      text-align: center;
+    }
+
+    .test-accounts {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid #30363d;
+    }
+
+    .test-accounts p {
+      font-size: 12px;
+      color: #8b949e;
+      margin-bottom: 8px;
+    }
+
+    .account-btn {
+      display: block;
+      width: 100%;
+      background: #21262d;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 8px 12px;
+      color: #e1e4e8;
+      font-size: 12px;
+      cursor: pointer;
+      text-align: left;
+      margin-bottom: 6px;
+      transition: background 0.2s;
+    }
+
+    .account-btn:hover { background: #30363d; }
+
+    /* ── Chat ── */
+    #chat-screen {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .message {
+      max-width: 800px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .message-user {
+      align-self: flex-end;
+      max-width: 600px;
+    }
+
+    .message-user .bubble {
+      background: #1f6feb;
+      color: #fff;
+      border-radius: 12px 12px 2px 12px;
+      padding: 12px 16px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .message-assistant .bubble {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 2px 12px 12px 12px;
+      padding: 16px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .message-blocked .bubble {
+      background: #2d1a1a;
+      border: 1px solid #f85149;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 14px;
+      color: #f85149;
+    }
+
+    .message-label {
+      font-size: 11px;
+      color: #8b949e;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .sources {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #30363d;
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .source-tag {
+      background: #21262d;
+      border: 1px solid #30363d;
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 11px;
+      color: #8b949e;
+    }
+
+    .meta-info {
+      font-size: 11px;
+      color: #484f58;
+      margin-top: 6px;
+    }
+
+    .welcome-msg {
+      text-align: center;
+      color: #484f58;
+      font-size: 14px;
+      margin: auto;
+      padding: 40px;
+    }
+
+    .welcome-msg h3 {
+      font-size: 18px;
+      color: #8b949e;
+      margin-bottom: 8px;
+    }
+
+    /* ── Input bar ── */
+    .input-bar {
+      background: #161b22;
+      border-top: 1px solid #30363d;
+      padding: 16px 24px;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 10px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .input-row input {
+      flex: 1;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: #e1e4e8;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .input-row input:focus { border-color: #58a6ff; }
+
+    .input-row input::placeholder { color: #484f58; }
+
+    .send-btn {
+      background: #238636;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+
+    .send-btn:hover { background: #2ea043; }
+    .send-btn:disabled { background: #21262d; color: #484f58; cursor: not-allowed; }
+
+    .logout-btn {
+      background: transparent;
+      color: #8b949e;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .logout-btn:hover { border-color: #f85149; color: #f85149; }
+
+    .typing-indicator {
+      display: flex;
+      gap: 4px;
+      padding: 8px 0;
+    }
+
+    .typing-indicator span {
+      width: 6px;
+      height: 6px;
+      background: #8b949e;
+      border-radius: 50%;
+      animation: bounce 1.2s infinite;
+    }
+
+    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+      0%, 60%, 100% { transform: translateY(0); }
+      30% { transform: translateY(-6px); }
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #0d1117; }
+    ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <h1>Secure Enterprise RAG <span>RBAC Protected</span></h1>
+  <div class="user-info" id="user-info" style="display:none">
+    <span id="user-name"></span>
+    <span class="role-badge" id="role-badge"></span>
+    <button class="logout-btn" onclick="logout()">Sign out</button>
+  </div>
+</div>
+
+<!-- Login Screen -->
+<div id="login-screen">
+  <div class="login-card">
+    <h2>Sign in</h2>
+    <p>Access company documents based on your role level</p>
+
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="email" placeholder="you@company.com">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="password" placeholder="••••••••••••"
+             onkeydown="if(event.key==='Enter') login()">
+    </div>
+    <button class="btn-primary" onclick="login()" id="login-btn">Sign in</button>
+    <div class="error-msg" id="login-error"></div>
+
+    <div class="test-accounts">
+      <p>Test accounts</p>
+      <button class="account-btn" onclick="fillCreds('alice@company.com','SecurePass1!')">
+        👤 Alice Smith — Manager (Level 2)
+      </button>
+      <button class="account-btn" onclick="fillCreds('bob@company.com','SecurePass1!')">
+        👤 Bob Jones — Employee (Level 1)
+      </button>
+      <button class="account-btn" onclick="fillCreds('admin@company.com','AdminPass1!')">
+        👤 System Admin — Admin (Level 3)
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Chat Screen -->
+<div id="chat-screen">
+  <div class="chat-messages" id="messages">
+    <div class="welcome-msg" id="welcome">
+      <h3>Ask anything about company documents</h3>
+      <p>You'll only see documents your role level permits</p>
+    </div>
+  </div>
+  <div class="input-bar">
+    <div class="input-row">
+      <input type="text" id="question-input"
+             placeholder="Ask a question about company policies..."
+             onkeydown="if(event.key==='Enter') ask()">
+      <button class="send-btn" onclick="ask()" id="send-btn">Ask</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API = 'http://localhost:8000/api/v1';
+  let accessToken = null;
+  let currentUser = null;
+
+  // ── Auth ──────────────────────────────────────────────────────────────────
+
+  function fillCreds(email, password) {
+    document.getElementById('email').value = email;
+    document.getElementById('password').value = password;
+  }
+
+  async function login() {
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const btn = document.getElementById('login-btn');
+    const errEl = document.getElementById('login-error');
+
+    if (!email || !password) {
+      errEl.textContent = 'Please enter email and password.';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Signing in...';
+    errEl.textContent = '';
+
+    try {
+      const res = await fetch(`${API}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        errEl.textContent = err.detail || 'Invalid credentials.';
+        return;
+      }
+
+      const data = await res.json();
+      accessToken = data.access_token;
+
+      // Get user profile
+      const meRes = await fetch(`${API}/auth/me`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      currentUser = await meRes.json();
+
+      showChat();
+    } catch (e) {
+      errEl.textContent = 'Connection error. Is the API running?';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Sign in';
+    }
+  }
+
+  function logout() {
+    accessToken = null;
+    currentUser = null;
+    document.getElementById('messages').innerHTML = `
+      <div class="welcome-msg" id="welcome">
+        <h3>Ask anything about company documents</h3>
+        <p>You'll only see documents your role level permits</p>
+      </div>`;
+    document.getElementById('chat-screen').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('user-info').style.display = 'none';
+  }
+
+  function showChat() {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('chat-screen').style.display = 'flex';
+
+    // Show user info in header
+    const roleColors = { employee: 'role-employee', manager: 'role-manager', admin: 'role-admin' };
+    document.getElementById('user-name').textContent = currentUser.full_name;
+    const badge = document.getElementById('role-badge');
+    badge.textContent = currentUser.role;
+    badge.className = 'role-badge ' + (roleColors[currentUser.role] || 'role-employee');
+    document.getElementById('user-info').style.display = 'flex';
+
+    document.getElementById('question-input').focus();
+  }
+
+  // ── Chat ──────────────────────────────────────────────────────────────────
+
+  async function ask() {
+    const input = document.getElementById('question-input');
+    const question = input.value.trim();
+    if (!question || !accessToken) return;
+
+    const sendBtn = document.getElementById('send-btn');
+    sendBtn.disabled = true;
+    input.value = '';
+
+    // Remove welcome message
+    const welcome = document.getElementById('welcome');
+    if (welcome) welcome.remove();
+
+    // Show user message
+    appendMessage('user', question);
+
+    // Show typing indicator
+    const typingId = showTyping();
+
+    try {
+      const res = await fetch(`${API}/query/ask`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ question, limit: 5 }),
+      });
+
+      removeTyping(typingId);
+
+      if (res.status === 400) {
+        const err = await res.json();
+        appendBlocked(err.detail);
+        return;
+      }
+
+      if (res.status === 401) {
+        appendBlocked('Session expired. Please sign in again.');
+        logout();
+        return;
+      }
+
+      if (!res.ok) {
+        appendBlocked('Something went wrong. Please try again.');
+        return;
+      }
+
+      const data = await res.json();
+      appendAnswer(data);
+
+    } catch (e) {
+      removeTyping(typingId);
+      appendBlocked('Connection error. Is the API running?');
+    } finally {
+      sendBtn.disabled = false;
+      input.focus();
+    }
+  }
+
+  function appendMessage(type, text) {
+    const msgs = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = `message message-${type}`;
+    div.innerHTML = `
+      <div class="message-label">${type === 'user' ? 'You' : 'Assistant'}</div>
+      <div class="bubble">${escapeHtml(text)}</div>`;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function appendAnswer(data) {
+    const msgs = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = 'message message-assistant';
+
+    const sourcesHtml = data.sources && data.sources.length > 0
+      ? `<div class="sources">
+          <span style="font-size:11px;color:#8b949e;margin-right:4px">Sources:</span>
+          ${data.sources.map(s => `<span class="source-tag">${s}</span>`).join('')}
+         </div>`
+      : '';
+
+    div.innerHTML = `
+      <div class="message-label">Assistant</div>
+      <div class="bubble">
+        ${escapeHtml(data.answer)}
+        ${sourcesHtml}
+        <div class="meta-info">
+          Role level ${data.user_role_level} · ${data.chunks_used} chunks used
+        </div>
+      </div>`;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function appendBlocked(reason) {
+    const msgs = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = 'message message-blocked';
+    div.innerHTML = `
+      <div class="message-label">⚠ Blocked</div>
+      <div class="bubble">🛡 ${escapeHtml(reason)}</div>`;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function showTyping() {
+    const msgs = document.getElementById('messages');
+    const div = document.createElement('div');
+    const id = 'typing-' + Date.now();
+    div.id = id;
+    div.className = 'message message-assistant';
+    div.innerHTML = `
+      <div class="message-label">Assistant</div>
+      <div class="bubble">
+        <div class="typing-indicator">
+          <span></span><span></span><span></span>
+        </div>
+      </div>`;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+    return id;
+  }
+
+  function removeTyping(id) {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+  }
+
+  function escapeHtml(text) {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/\n/g, '<br>');
+  }
+</script>
+</body>
+</html>
