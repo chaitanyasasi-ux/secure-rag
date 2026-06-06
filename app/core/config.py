@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     )
 
     # App 
+    
     app_env: Literal["development", "staging", "production"] = "development"
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     cors_origins: list[str] = Field(default=["http://localhost:3000"]) #Cross origin resource sharing(It blocks website calling api's on different domain unless the api explicitly allows it)
@@ -44,6 +45,7 @@ class Settings(BaseSettings):
     qdrant_host: str = "localhost"
     qdrant_port: int = Field(default=6333, ge=1, le=65535)
     qdrant_collection_name: str = "enterprise_docs"
+    qdrant_api_key: str = Field(default="", description="Qdrant Cloud API key (production only)")
 
     # ── Groq ──────────────────────────────────────────────────────────────────────
     groq_api_key: str = Field(..., min_length=10)
