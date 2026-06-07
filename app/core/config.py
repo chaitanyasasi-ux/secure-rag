@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     qdrant_host: str = "localhost"
     qdrant_port: int = Field(default=6333, ge=1, le=65535)
     qdrant_collection_name: str = "enterprise_docs"
-    qdrant_api_key: str = Field(default="", description="Qdrant Cloud API key (production only)")
+    qdrant_api_key: str = Field(default="")
 
     # ── Groq ──────────────────────────────────────────────────────────────────────
     groq_api_key: str = Field(..., min_length=10)

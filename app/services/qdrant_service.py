@@ -19,7 +19,6 @@ settings = get_settings()
 
 VECTOR_SIZE = 384
 
-
 def get_qdrant_client() -> QdrantClient:
     if settings.qdrant_api_key:
         return QdrantClient(
@@ -30,7 +29,6 @@ def get_qdrant_client() -> QdrantClient:
         host=settings.qdrant_host,
         port=settings.qdrant_port,
     )
-
 
 def setup_collection(client: QdrantClient) -> None:
     existing = client.get_collections()
