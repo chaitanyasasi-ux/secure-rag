@@ -1,6 +1,6 @@
+from __future__ import annotations
 from app.core.startup_patch import apply_patches
 apply_patches()
-from __future__ import annotations
 import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
