@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import structlog
 from fastapi import HTTPException, status
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
 
 from app.core.config import get_settings
 from app.core.hashing import hash_password, verify_password
@@ -16,6 +15,7 @@ from app.core.security import (
     create_refresh_token,
     decode_refresh_token,
 )
+from app.db.session import AsyncSession
 from app.models.user import RefreshToken, Role, User
 from app.schemas.auth import LoginRequest, SignupRequest, TokenResponse
 
@@ -27,16 +27,20 @@ class AuthService:
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
 
+    # ── Signup ────────────────────────────────────────────────────────────────
+
     async def signup(self, payload: SignupRequest) -> User:
-        result = await self._db.execute(
+        # Reject duplicate emails
+        existing = await self._db.execute(
             select(User).where(User.email == payload.email.lower())
         )
-        if result.scalar_one_or_none() is not None:
+        if existing.scalar_one_or_none() is not None:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="An account with this email already exists.",
             )
 
+        # Resolve role
         role_result = await self._db.execute(
             select(Role).where(Role.name == payload.role_name)
         )
@@ -55,17 +59,22 @@ class AuthService:
             role_id=role.id,
         )
         self._db.add(user)
-        await self._db.flush()
+        await self._db.flush()  # get the generated ID before commit
+
         log.info("auth.signup", user_id=user.id, role=payload.role_name)
         return user
 
+    # ── Login ─────────────────────────────────────────────────────────────────
+
     async def login(self, payload: LoginRequest) -> TokenResponse:
-        result = await self._db.execute(
+        user_result = await self._db.execute(
             select(User).where(User.email == payload.email.lower())
         )
-        user = result.scalar_one_or_none()
+        user = user_result.first()
 
-        dummy_hash = "$2b$12$notarealhashjustfillstime000000000000000000000000000"
+        # Constant-time comparison — always run verify_password even on miss
+        # to prevent timing-based user enumeration
+        dummy_hash = "$2b$12$LCGLuI7y/ot7QNshVOdRiuEAkeFdFn8TtFTMOsaqP3reWAHvJdRvi"
         stored = user.hashed_password if user else dummy_hash
         password_ok = verify_password(payload.password, stored)
 
@@ -83,9 +92,8 @@ class AuthService:
                 detail="Account is deactivated.",
             )
 
-        role_result = await self._db.execute(
-            select(Role).where(Role.id == user.role_id)
-        )
+        # Load role for level info
+        role_result = await self._db.execute(select(Role).where(Role.id == user.role_id))
         role = role_result.scalar_one()
 
         access = create_access_token(
@@ -96,6 +104,7 @@ class AuthService:
         )
         refresh = create_refresh_token(user_id=user.id)
 
+        # Persist refresh token JTI for revocation support
         from jose import jwt as jose_jwt
         raw = jose_jwt.decode(
             refresh,
@@ -107,12 +116,14 @@ class AuthService:
             RefreshToken(
                 jti=raw["jti"],
                 user_id=user.id,
-                expires_at=datetime.utcnow() + timedelta(days=settings.refresh_token_expire_days),
+                expires_at=datetime.fromtimestamp(raw["exp"], tz=timezone.utc),
             )
         )
 
-        user.last_login_at = datetime.utcnow()
+        # Update last login timestamp
+        user.last_login_at = datetime.now(timezone.utc)
         self._db.add(user)
+
         log.info("auth.login_success", user_id=user.id, role=role.name)
 
         return TokenResponse(
@@ -120,6 +131,8 @@ class AuthService:
             refresh_token=refresh,
             expires_in=settings.access_token_expire_minutes * 60,
         )
+
+    # ── Refresh ───────────────────────────────────────────────────────────────
 
     async def refresh_tokens(self, refresh_token: str) -> TokenResponse:
         try:
@@ -134,10 +147,11 @@ class AuthService:
                 status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)
             )
 
+        # Verify the token is in the DB and not revoked
         stored_result = await self._db.execute(
             select(RefreshToken).where(RefreshToken.jti == raw["jti"])
         )
-        stored = stored_result.scalar_one_or_none()
+        stored = stored_result.first()
 
         if stored is None or stored.revoked:
             raise HTTPException(
@@ -145,18 +159,16 @@ class AuthService:
                 detail="Refresh token is invalid or has been revoked.",
             )
 
+        # Rotate: revoke old token and issue new pair
         stored.revoked = True
-        stored.revoked_at = datetime.utcnow()
+        stored.revoked_at = datetime.now(timezone.utc)
         self._db.add(stored)
 
         user_result = await self._db.execute(
             select(User).where(User.id == raw["sub"])
         )
         user = user_result.scalar_one()
-
-        role_result = await self._db.execute(
-            select(Role).where(Role.id == user.role_id)
-        )
+        role_result = await self._db.execute(select(Role).where(Role.id == user.role_id))
         role = role_result.scalar_one()
 
         access = create_access_token(
@@ -178,7 +190,7 @@ class AuthService:
             RefreshToken(
                 jti=new_raw["jti"],
                 user_id=user.id,
-                expires_at=datetime.utcnow() + timedelta(days=settings.refresh_token_expire_days),
+                expires_at=datetime.fromtimestamp(new_raw["exp"], tz=timezone.utc),
             )
         )
 
@@ -188,17 +200,19 @@ class AuthService:
             expires_in=settings.access_token_expire_minutes * 60,
         )
 
+    # ── Logout ────────────────────────────────────────────────────────────────
+
     async def logout(self, refresh_token: str) -> None:
         try:
             raw = decode_refresh_token(refresh_token)
         except (TokenExpiredError, TokenInvalidError):
-            return
+            return  # Silently succeed — token is already invalid
 
         stored_result = await self._db.execute(
             select(RefreshToken).where(RefreshToken.jti == raw["jti"])
         )
-        stored = stored_result.scalar_one_or_none()
+        stored = stored_result.first()
         if stored and not stored.revoked:
             stored.revoked = True
-            stored.revoked_at = datetime.utcnow()
+            stored.revoked_at = datetime.now(timezone.utc)
             self._db.add(stored)
